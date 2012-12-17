@@ -1,0 +1,49 @@
+﻿@{
+    Page.Title = "Efficient Paging And Sorting";
+    
+    var pageSize = 10; 
+    var totalPages = 0; 
+    var count = 0;
+    var page = UrlData[0].IsInt() ? UrlData[0].AsInt() : 1;
+    var offset = (page -1) * pageSize;
+    var db = Database.Open("Northwind");
+    var sql = "SELECT COUNT (*) FROM Customers";
+    count = db.QueryValue(sql);
+    totalPages = count/pageSize;        
+    if(count % pageSize > 0){
+        totalPages += 1;
+    }
+    var query = Request.Url.GetComponents(UriComponents.Query, UriFormat.Unescaped);
+    var columns = new[]{"CustomerID", "CompanyName", "ContactName", "Address", "City", "Country", "Phone"};
+    var orderBy = "CustomerID";
+    if(!Request["sort"].IsEmpty()){
+        if(columns.Contains(Request["sort"])){
+            orderBy = Request["sort"];
+            if(Request["sortdir"] == "DESC"){
+                orderBy += " DESC"; 
+            }
+        }
+    }
+    sql = "SELECT * FROM Customers Order By " + orderBy + " OFFSET @0 ROWS FETCH NEXT @1 ROWS  ONLY;";
+    var data = db.Query(sql, offset, pageSize);
+    var grid = new WebGrid(data, columnNames: columns);
+    
+}
+<h1>Efficient Paging And Sorting</h1>
+<div id="grid">
+    <div id="table">
+        @grid.GetHtml(    
+            tableStyle : "table",
+            alternatingRowStyle : "alternate",
+            headerStyle : "header"
+        )
+    
+        @for (var i = 1; i <= totalPages; i++){
+            if(i == page){
+                 @i
+            }else{
+                <a href="~/Default/@i@(query.Length > 0 ? "?" + query : "")">@i</a>
+            }
+        }
+    </div>
+</div>
